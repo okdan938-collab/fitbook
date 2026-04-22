@@ -65,16 +65,23 @@ providers.push(
 );
 
 export const authOptions: AuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  ...(process.env.DATABASE_URL ? { adapter: PrismaAdapter(prisma) } : {}),
   providers,
   session: {
-    strategy: "database"
+    strategy: process.env.DATABASE_URL ? "database" : "jwt"
   },
   callbacks: {
-    async session({ session, user }) {
+    async jwt({ token, user }) {
+      if (user) {
+        token.sub = user.id;
+        token.role = (user.role as Role) || Role.ATHLETE;
+      }
+      return token;
+    },
+    async session({ session, user, token }) {
       if (session.user) {
-        session.user.id = user.id;
-        session.user.role = (user.role as Role) || Role.ATHLETE;
+        session.user.id = user?.id || token?.sub || "";
+        session.user.role = (user?.role as Role) || (token?.role as Role) || Role.ATHLETE;
       }
       return session;
     }

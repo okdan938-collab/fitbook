@@ -4,12 +4,26 @@ declare global {
   var prisma: PrismaClient | undefined;
 }
 
-export const prisma =
-  global.prisma ||
-  new PrismaClient({
+function createPrismaClient() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error("Missing DATABASE_URL");
+  }
+
+  return new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"]
   });
-
-if (process.env.NODE_ENV !== "production") {
-  global.prisma = prisma;
 }
+
+export function getPrisma() {
+  if (!global.prisma) {
+    global.prisma = createPrismaClient();
+  }
+
+  return global.prisma;
+}
+
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getPrisma(), prop, receiver);
+  }
+});
