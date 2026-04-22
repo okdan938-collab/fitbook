@@ -49,7 +49,7 @@ Optional (for OAuth):
 - Uses Stripe Checkout Sessions in `subscription` mode (recommended for recurring plans).
 - Uses Stripe Billing subscription lifecycle via webhook updates.
 - Uses a Stripe Price ID, not legacy plans.
-- Stripe API version pinned to `2026-02-25.clover`.
+- Stripe API version pinned to `2025-08-27.basil` (compatible with installed SDK).
 
 ## Current MVP boundaries
 

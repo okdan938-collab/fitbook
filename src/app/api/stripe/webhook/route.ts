@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
 import { prisma } from "@/lib/prisma";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 
 function toSubscriptionStatus(status: string): SubscriptionStatus {
   switch (status) {
@@ -20,6 +20,7 @@ function toSubscriptionStatus(status: string): SubscriptionStatus {
 }
 
 export async function POST(request: Request) {
+  const stripe = getStripe();
   const sig = request.headers.get("stripe-signature");
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
       data: {
         status: toSubscriptionStatus(sub.status as string),
         currentPeriodEnd: (sub as any).current_period_end
-          ? new Date(((sub as any).current_period_end) * 1000
+          ? new Date((sub as any).current_period_end * 1000)
           : null
       }
     });

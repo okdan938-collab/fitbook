@@ -25,16 +25,11 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   );
 }
 
-if (process.env.APPLE_ID && process.env.APPLE_TEAM_ID && process.env.APPLE_PRIVATE_KEY && process.env.APPLE_KEY_ID) {
+if (process.env.APPLE_ID && process.env.APPLE_CLIENT_SECRET) {
   providers.push(
     AppleProvider({
       clientId: process.env.APPLE_ID,
-      clientSecret: {
-        appleId: process.env.APPLE_ID,
-        teamId: process.env.APPLE_TEAM_ID,
-        privateKey: process.env.APPLE_PRIVATE_KEY,
-        keyId: process.env.APPLE_KEY_ID
-      }
+      clientSecret: process.env.APPLE_CLIENT_SECRET
     })
   );
 }
