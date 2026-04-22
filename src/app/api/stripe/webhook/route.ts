@@ -69,8 +69,8 @@ export async function POST(request: Request) {
       where: { stripeSubscriptionId },
       data: {
         status: toSubscriptionStatus(sub.status as string),
-        currentPeriodEnd: sub.current_period_end
-          ? new Date((sub.current_period_end as number) * 1000)
+        currentPeriodEnd: (sub as any).current_period_end
+          ? new Date(((sub as any).current_period_end) * 1000
           : null
       }
     });
