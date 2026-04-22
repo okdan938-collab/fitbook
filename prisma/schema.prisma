@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ATHLETE
+  TRAINER
+  ADMIN
+}
+
+enum SubscriptionStatus {
+  INACTIVE
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+model User {
+  id             String       @id @default(cuid())
+  name           String?
+  email          String?      @unique
+  emailVerified  DateTime?
+  image          String?
+  passwordHash   String?
+  role           Role         @default(ATHLETE)
+  latitude       Float?
+  longitude      Float?
+  zipCode        String?
+  skillLevel     String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  accounts       Account[]
+  sessions       Session[]
+  trainerProfile TrainerProfile?
+  givenReviews   Review[]      @relation("GivenReviews")
+  favorites      Favorite[]
+  subscription   Subscription?
+  messagesSent   Message[]     @relation("SentMessages")
+  messagesRecv   Message[]     @relation("RecvMessages")
+}
+
+model TrainerProfile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  bio              String
+  sports           String[]
+  experience       String
+  hourlyPriceCents Int      @default(5000)
+  certifications   String[]
+  mediaUrls        String[]
+  verificationNote String?
+  isVerified       Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviews          Review[]
+  favorites        Favorite[]
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  reviewerId String
+  trainerId  String
+  rating     Int
+  comment    String
+  createdAt  DateTime @default(now())
+
+  reviewer   User           @relation("GivenReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+  trainer    TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewerId, trainerId])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  trainerId String
+  createdAt DateTime @default(now())
+
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trainer   TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, trainerId])
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  status               SubscriptionStatus @default(INACTIVE)
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?            @unique
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  body       String
+  createdAt  DateTime @default(now())
+
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("RecvMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String? @db.Text
+  access_token       String? @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String? @db.Text
+  session_state      String?
+
+  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
