@@ -19,6 +19,19 @@ function toSubscriptionStatus(status: string): SubscriptionStatus {
   }
 }
 
+function getSubscriptionPeriodEnd(sub: Stripe.Subscription): Date | null {
+  const itemEnds = sub.items?.data
+    ?.map((item) => item.current_period_end)
+    .filter((ts): ts is number => typeof ts === "number");
+
+  if (!itemEnds || itemEnds.length === 0) {
+    return null;
+  }
+
+  const periodEnd = Math.min(...itemEnds);
+  return new Date(periodEnd * 1000);
+}
+
 export async function POST(request: Request) {
   const stripe = getStripe();
   const sig = request.headers.get("stripe-signature");
@@ -60,8 +73,7 @@ export async function POST(request: Request) {
 
   if (
     event.type === "customer.subscription.updated" ||
-    event.type === "customer.subscription.deleted" ||
-    event.type === "invoice.payment_failed"
+    event.type === "customer.subscription.deleted"
   ) {
     const sub = event.data.object as Stripe.Subscription;
     const stripeSubscriptionId = sub.id as string;
@@ -70,11 +82,25 @@ export async function POST(request: Request) {
       where: { stripeSubscriptionId },
       data: {
         status: toSubscriptionStatus(sub.status as string),
-        currentPeriodEnd: (sub as any).current_period_end
-          ? new Date((sub as any).current_period_end * 1000)
-          : null
+        currentPeriodEnd: getSubscriptionPeriodEnd(sub)
       }
     });
+  }
+
+  if (event.type === "invoice.payment_failed") {
+    const invoice = event.data.object as Stripe.Invoice;
+    const subscriptionRef = invoice.parent?.subscription_details?.subscription;
+    const stripeSubscriptionId =
+      typeof subscriptionRef === "string" ? subscriptionRef : subscriptionRef?.id;
+
+    if (stripeSubscriptionId) {
+      await prisma.subscription.updateMany({
+        where: { stripeSubscriptionId },
+        data: {
+          status: SubscriptionStatus.PAST_DUE
+        }
+      });
+    }
   }
 
   return NextResponse.json({ received: true });
